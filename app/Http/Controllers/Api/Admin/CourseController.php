@@ -1,0 +1,87 @@
+<?php
+
+namespace App\Http\Controllers\Api\Admin;
+
+use App\Http\Resources\CourseResource;
+use App\Models\Course;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+
+class CourseController
+{
+    public function index(Request $request)
+    {
+        $courses = Course::withCount(['students', 'groups'])
+            ->paginate($request->get('per_page', 20));
+
+        return CourseResource::collection($courses);
+    }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'age_from' => 'required|integer|min:3',
+            'age_to' => 'required|integer|gte:age_from',
+            'description' => 'required|string',
+            'price' => 'required|numeric|min:0',
+            'duration_weeks' => 'required|integer|min:1',
+            'is_active' => 'boolean',
+        ]);
+
+        $validated['slug'] = Str::slug($validated['name']) . '-' . uniqid();
+
+        $course = Course::create($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Курс создан',
+            'data' => new CourseResource($course)
+        ], 201);
+    }
+
+    public function show(Course $course)
+    {
+        $course->load(['lessons', 'groups']);
+
+        return new CourseResource($course);
+    }
+
+    public function update(Request $request, Course $course)
+    {
+        $validated = $request->validate([
+            'name' => 'string|max:255',
+            'age_from' => 'integer|min:3',
+            'age_to' => 'integer|gte:age_from',
+            'description' => 'string',
+            'price' => 'numeric|min:0',
+            'duration_weeks' => 'integer|min:1',
+            'is_active' => 'boolean',
+        ]);
+
+        $course->update($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Курс обновлён',
+            'data' => new CourseResource($course)
+        ]);
+    }
+
+    public function destroy(Course $course)
+    {
+        if ($course->groups()->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Нельзя удалить курс с группами'
+            ], 422);
+        }
+
+        $course->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Курс удалён'
+        ]);
+    }
+}
