@@ -68,11 +68,21 @@ class AuthController
     // Logout
     public function logout(Request $request)
     {
-        $request->user()->currentAccessToken()->delete();
+        // Проверяем, есть ли пользователь
+        if ($request->user()) {
+            // Удаляем текущий токен
+            $request->user()->currentAccessToken()->delete();
 
+            return response()->json([
+                'success' => true,
+                'message' => 'Вы вышли из системы'
+            ]);
+        }
+
+        // Если пользователь не авторизован, всё равно возвращаем успех
         return response()->json([
             'success' => true,
-            'message' => 'Вы вышли из системы',
+            'message' => 'Сессия уже завершена'
         ]);
     }
 
