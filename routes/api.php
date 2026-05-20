@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\Admin\CourseController as AdminCourseController;
 use App\Http\Controllers\Api\Admin\GroupController;
 use App\Http\Controllers\Api\Admin\AttendanceController;
 use App\Http\Controllers\Api\Parent\ChildController;
+use App\Http\Controllers\Api\Public\StatisticsController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -17,6 +18,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/courses/{slug}', [PublicCourseController::class, 'show']);
         Route::get('/courses/{slug}/lessons', [PublicCourseController::class, 'lessons']);
         Route::post('/applications', [ApplicationController::class, 'store']);
+        Route::get('/statistics', [StatisticsController::class, 'index']);
     });
 
     // Авторизация
