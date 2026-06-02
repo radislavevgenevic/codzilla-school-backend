@@ -8,6 +8,7 @@ use App\Models\Group;
 use App\Models\Lesson;
 use App\Models\Schedule;
 use App\Models\Student;
+use App\Models\Subscription;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -283,7 +284,7 @@ class AdminManagementTest extends TestCase
         Attendance::create([
             'schedule_id' => $schedule->id,
             'student_id' => $student->id,
-            'status' => 'absent',
+            'status' => 'absent_unjustified',
             'marked_by' => $admin->id,
             'marked_at' => now(),
         ]);
@@ -293,7 +294,7 @@ class AdminManagementTest extends TestCase
             ->assertOk()
             ->assertJsonPath('stats.total', 1)
             ->assertJsonPath('stats.present', 0)
-            ->assertJsonPath('stats.absent', 1)
+            ->assertJsonPath('stats.absent_unjustified', 1)
             ->assertJsonPath('stats.late', 0);
 
         Sanctum::actingAs($parent);
@@ -301,8 +302,99 @@ class AdminManagementTest extends TestCase
             ->assertOk()
             ->assertJsonPath('stats.total', 1)
             ->assertJsonPath('stats.present', 0)
-            ->assertJsonPath('stats.absent', 1)
+            ->assertJsonPath('stats.absent_unjustified', 1)
             ->assertJsonPath('stats.late', 0);
+    }
+
+    public function test_justified_absence_extends_subscription_once_and_can_be_reverted(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $parent = User::factory()->create(['role' => 'parent']);
+        $course = Course::create([
+            'name' => 'Python',
+            'slug' => 'python',
+            'age_from' => 10,
+            'age_to' => 16,
+            'description' => 'Course description',
+            'price' => 120000,
+            'duration_weeks' => 8,
+            'is_active' => true,
+        ]);
+        $group = Group::create([
+            'name' => 'Python A',
+            'course_id' => $course->id,
+            'max_students' => 10,
+            'current_students' => 1,
+            'status' => 'active',
+        ]);
+        $student = Student::create([
+            'full_name' => 'Demo Student',
+            'age' => 12,
+            'gender' => 'male',
+            'status' => 'active',
+            'parent_id' => $parent->id,
+            'current_course_id' => $course->id,
+        ]);
+        $group->students()->attach($student->id, [
+            'enrolled_at' => '2026-06-01',
+            'status' => 'active',
+        ]);
+        $lesson = Lesson::create([
+            'course_id' => $course->id,
+            'title' => 'Intro',
+            'order' => 1,
+        ]);
+        $schedule = Schedule::create([
+            'lesson_id' => $lesson->id,
+            'group_id' => $group->id,
+            'start_time' => '2026-06-02 10:00:00',
+            'end_time' => '2026-06-02 11:00:00',
+            'room' => '101',
+        ]);
+        $subscription = Subscription::create([
+            'student_id' => $student->id,
+            'name' => 'June subscription',
+            'start_date' => '2026-06-01',
+            'end_date' => '2026-06-30',
+            'status' => 'active',
+        ]);
+
+        Sanctum::actingAs($admin);
+
+        $this->postJson("/api/v1/admin/attendance/schedule/{$schedule->id}/mark", [
+            'marks' => [[
+                'student_id' => $student->id,
+                'status' => 'absent_justified',
+                'reason' => 'Справка',
+            ]],
+        ])->assertOk();
+
+        $this->assertSame('2026-07-01', $subscription->refresh()->end_date->toDateString());
+        $this->assertDatabaseHas('subscription_extensions', [
+            'subscription_id' => $subscription->id,
+            'days' => 1,
+        ]);
+
+        $this->postJson("/api/v1/admin/attendance/schedule/{$schedule->id}/mark", [
+            'marks' => [[
+                'student_id' => $student->id,
+                'status' => 'absent_justified',
+                'reason' => 'Справка',
+            ]],
+        ])->assertOk();
+
+        $this->assertSame('2026-07-01', $subscription->refresh()->end_date->toDateString());
+        $this->assertSame(1, $subscription->extensions()->count());
+
+        $this->postJson("/api/v1/admin/attendance/schedule/{$schedule->id}/mark", [
+            'marks' => [[
+                'student_id' => $student->id,
+                'status' => 'present',
+            ]],
+        ])->assertOk();
+
+        $this->assertSame('2026-06-30', $subscription->refresh()->end_date->toDateString());
+        $this->assertSame(0, $subscription->extensions()->count());
     }
 }
 

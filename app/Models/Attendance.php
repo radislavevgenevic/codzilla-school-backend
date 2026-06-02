@@ -38,13 +38,19 @@ class Attendance extends Model
         return $this->belongsTo(User::class, 'marked_by');
     }
 
+    public function subscriptionExtension()
+    {
+        return $this->hasOne(SubscriptionExtension::class);
+    }
+
     // Аттрибуты
     public function getStatusTextAttribute(): string
     {
         return match ($this->status) {
             'present' => 'Присутствовал',
-            'absent' => 'Отсутствовал',
             'late' => 'Опоздал',
+            'absent_justified' => 'Отсутствовал по уважительной причине',
+            'absent_unjustified' => 'Отсутствовал без уважительной причины',
             default => 'Неизвестно'
         };
     }

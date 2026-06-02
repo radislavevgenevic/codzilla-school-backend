@@ -9,6 +9,7 @@ use App\Models\Group;
 use App\Models\Progress;
 use App\Models\Schedule;
 use App\Models\Student;
+use App\Models\Subscription;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -93,7 +94,7 @@ class AttendanceController
         $request->validate([
             'marks' => 'required|array',
             'marks.*.student_id' => 'required|exists:students,id',
-            'marks.*.status' => 'required|in:present,absent,late',
+            'marks.*.status' => 'required|in:present,late,absent_justified,absent_unjustified',
             'marks.*.reason' => 'nullable|string|max:500',
         ]);
 
@@ -127,6 +128,8 @@ class AttendanceController
                     $results['updated']++;
                 }
 
+                $this->syncJustifiedAbsenceSubscriptionExtension($attendance, $schedule);
+
                 // Обновляем прогресс ученика
                 if (method_exists(Progress::class, 'recalculate')) {
                     Progress::recalculate($mark['student_id'], $schedule->lesson->course_id);
@@ -158,7 +161,7 @@ class AttendanceController
 
         $count = 0;
         foreach ($students as $student) {
-            Attendance::updateOrCreate(
+            $attendance = Attendance::updateOrCreate(
                 [
                     'schedule_id' => $schedule->id,
                     'student_id' => $student->id,
@@ -170,6 +173,8 @@ class AttendanceController
                     'marked_at' => now(),
                 ]
             );
+
+            $this->syncJustifiedAbsenceSubscriptionExtension($attendance, $schedule);
             $count++;
 
             // Обновляем прогресс
@@ -194,7 +199,8 @@ class AttendanceController
         $stats = [
             'total' => (clone $statsQuery)->count(),
             'present' => (clone $statsQuery)->where('status', 'present')->count(),
-            'absent' => (clone $statsQuery)->where('status', 'absent')->count(),
+            'absent_justified' => (clone $statsQuery)->where('status', 'absent_justified')->count(),
+            'absent_unjustified' => (clone $statsQuery)->where('status', 'absent_unjustified')->count(),
             'late' => (clone $statsQuery)->where('status', 'late')->count(),
         ];
 
@@ -206,5 +212,48 @@ class AttendanceController
         return AttendanceResource::collection($attendances)->additional([
             'stats' => $stats,
         ]);
+    }
+
+    private function syncJustifiedAbsenceSubscriptionExtension(Attendance $attendance, Schedule $schedule): void
+    {
+        $existingExtension = $attendance->subscriptionExtension()->with('subscription')->first();
+
+        if ($attendance->status !== 'absent_justified') {
+            if (!$existingExtension) {
+                return;
+            }
+
+            $existingExtension->subscription->forceFill([
+                'end_date' => $existingExtension->subscription->end_date->copy()->subDays($existingExtension->days),
+            ])->save();
+
+            $existingExtension->delete();
+
+            return;
+        }
+
+        if ($existingExtension) {
+            return;
+        }
+
+        $lessonDate = $schedule->start_time->toDateString();
+
+        $subscription = Subscription::where('student_id', $attendance->student_id)
+            ->where('status', 'active')
+            ->whereDate('start_date', '<=', $lessonDate)
+            ->whereDate('end_date', '>=', $lessonDate)
+            ->orderByDesc('end_date')
+            ->first();
+
+        if (!$subscription) {
+            return;
+        }
+
+        $subscription->extend(
+            1,
+            $attendance->markedBy,
+            'Автопродление за пропуск по уважительной причине',
+            $attendance
+        );
     }
 }

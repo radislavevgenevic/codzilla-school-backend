@@ -17,7 +17,8 @@ class Course extends Model
         'basic_skills',
         'price',
         'duration_weeks',
-        'is_active'
+        'is_active',
+        'teacher_id',
     ];
 
     protected $casts = [
@@ -44,6 +45,11 @@ class Course extends Model
     public function groups(): HasMany
     {
         return $this->hasMany(Group::class);
+    }
+
+    public function teacher()
+    {
+        return $this->belongsTo(Teacher::class);
     }
 
     public function activeStudents()

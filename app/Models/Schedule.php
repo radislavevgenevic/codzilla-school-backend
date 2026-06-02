@@ -73,13 +73,15 @@ class Schedule extends Model
     {
         $total = $this->getAvailableStudentsFromCourse()->count();
         $present = $this->attendances()->where('status', 'present')->count();
-        $absent = $this->attendances()->where('status', 'absent')->count();
+        $absent_justified = $this->attendances()->where('status', 'absent_justified')->count();
+        $absent_unjustified = $this->attendances()->where('status', 'absent_unjustified')->count();
         $late = $this->attendances()->where('status', 'late')->count();
 
         return [
             'total' => $total,
             'present' => $present,
-            'absent' => $absent,
+            'absent_justified' => $absent_justified,
+            'absent_unjustified' => $absent_unjustified,
             'late' => $late,
             'percent' => $total > 0 ? round(($present / $total) * 100) : 0
         ];
@@ -97,22 +99,31 @@ class Schedule extends Model
             ->where('status', 'present')
             ->count();
 
-        $absent = $this->attendances()
-            ->whereIn('student_id', $students->pluck('id'))
-            ->where('status', 'absent')
-            ->count();
-
         $late = $this->attendances()
             ->whereIn('student_id', $students->pluck('id'))
             ->where('status', 'late')
             ->count();
 
+        $absent_justified = $this->attendances()
+            ->whereIn('student_id', $students->pluck('id'))
+            ->where('status', 'absent_justified')
+            ->count();
+
+        $absent_unjustified = $this->attendances()
+            ->whereIn('student_id', $students->pluck('id'))
+            ->where('status', 'absent_unjustified')
+            ->count();
+
+        $total_absent = $absent_justified + $absent_unjustified;
+
         return [
             'total' => $total,
             'present' => $present,
-            'absent' => $absent,
             'late' => $late,
-            'not_marked' => $total - ($present + $absent + $late), // НЕ ОТМЕЧЕННЫЕ
+            'absent_justified' => $absent_justified,
+            'absent_unjustified' => $absent_unjustified,
+            'total_absent' => $total_absent,
+            'not_marked' => $total - ($present + $late + $total_absent), // НЕ ОТМЕЧЕННЫЕ
             'percent' => $total > 0 ? round(($present / $total) * 100) : 0
         ];
     }
@@ -151,5 +162,14 @@ class Schedule extends Model
         $lessonTitle = $this->lesson?->title ?? 'Занятие';
         $groupName = $this->group?->name ?? 'Без группы';
         return "{$lessonTitle} ({$groupName})";
+    }
+
+    // Получить длительность занятия в минутах
+    public function getDurationInMinutes(): int
+    {
+        if (!$this->start_time || !$this->end_time) {
+            return 0;
+        }
+        return (int) $this->start_time->diffInMinutes($this->end_time);
     }
 }

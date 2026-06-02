@@ -48,7 +48,8 @@ class StudentResource extends BaseResource
                 return [
                     'total_lessons' => $this->attendances()->count(),
                     'present' => $this->attendances()->where('status', 'present')->count(),
-                    'absent' => $this->attendances()->where('status', 'absent')->count(),
+                    'absent_justified' => $this->attendances()->where('status', 'absent_justified')->count(),
+                    'absent_unjustified' => $this->attendances()->where('status', 'absent_unjustified')->count(),
                     'late' => $this->attendances()->where('status', 'late')->count(),
                     'attendance_rate' => $this->getAttendanceRate(),
                 ];

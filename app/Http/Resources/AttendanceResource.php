@@ -26,7 +26,9 @@ class AttendanceResource extends BaseResource
 
             // Вычисляемые поля
             'was_late' => $this->status === 'late',
-            'was_absent' => $this->status === 'absent',
+            'was_absent' => in_array($this->status, ['absent_justified', 'absent_unjustified']),
+            'was_absent_justified' => $this->status === 'absent_justified',
+            'was_absent_unjustified' => $this->status === 'absent_unjustified',
             'was_present' => $this->status === 'present',
 
             // Для родителя: контекст группы
@@ -53,7 +55,8 @@ class AttendanceResource extends BaseResource
         return parent::collection($resource)->additional([
             'summary' => [
                 'present_count' => $collection->where('status', 'present')->count(),
-                'absent_count' => $collection->where('status', 'absent')->count(),
+                'absent_justified_count' => $collection->where('status', 'absent_justified')->count(),
+                'absent_unjustified_count' => $collection->where('status', 'absent_unjustified')->count(),
                 'late_count' => $collection->where('status', 'late')->count(),
                 'total_count' => $collection->count(),
                 'attendance_rate' => $collection->count() > 0

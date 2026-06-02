@@ -53,6 +53,11 @@ class User extends Authenticatable
         return $this->hasMany(Attendance::class, 'marked_by');
     }
 
+    public function teacherProfile()
+    {
+        return $this->hasOne(Teacher::class);
+    }
+
     // Проверки ролей
     public function isAdmin()
     {
@@ -62,6 +67,11 @@ class User extends Authenticatable
     public function isParent()
     {
         return $this->role === 'parent';
+    }
+
+    public function isTeacher()
+    {
+        return $this->role === 'teacher';
     }
 
     public function getAvatarUrl(): ?string

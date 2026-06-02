@@ -63,6 +63,11 @@ class Student extends Model
         return $this->hasMany(Attendance::class);
     }
 
+    public function subscriptions(): HasMany
+    {
+        return $this->hasMany(Subscription::class);
+    }
+
     // Прогресс по курсам
     public function progress(): HasMany
     {
@@ -130,7 +135,7 @@ class Student extends Model
     {
         $group = $this->currentGroup();
         if (!$group) {
-            return ['total' => 0, 'present' => 0, 'absent' => 0, 'late' => 0];
+            return ['total' => 0, 'present' => 0, 'absent_justified' => 0, 'absent_unjustified' => 0, 'late' => 0];
         }
 
         $attendances = $this->attendances()
@@ -140,7 +145,8 @@ class Student extends Model
         return [
             'total' => $attendances->count(),
             'present' => $attendances->where('status', 'present')->count(),
-            'absent' => $attendances->where('status', 'absent')->count(),
+            'absent_justified' => $attendances->where('status', 'absent_justified')->count(),
+            'absent_unjustified' => $attendances->where('status', 'absent_unjustified')->count(),
             'late' => $attendances->where('status', 'late')->count(),
         ];
     }

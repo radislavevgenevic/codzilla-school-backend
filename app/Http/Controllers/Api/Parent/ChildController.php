@@ -51,7 +51,8 @@ class ChildController
             'stats' => [
                 'total' => $attendances->count(),
                 'present' => $attendances->where('status', 'present')->count(),
-                'absent' => $attendances->where('status', 'absent')->count(),
+                'absent_justified' => $attendances->where('status', 'absent_justified')->count(),
+                'absent_unjustified' => $attendances->where('status', 'absent_unjustified')->count(),
                 'late' => $attendances->where('status', 'late')->count(),
             ]
         ]);

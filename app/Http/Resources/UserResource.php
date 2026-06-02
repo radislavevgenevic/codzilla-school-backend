@@ -19,11 +19,20 @@ class UserResource extends JsonResource
             // Вычисляемые поля
             'is_admin' => $this->role === 'admin',
             'is_parent' => $this->role === 'parent',
+            'is_teacher' => $this->role === 'teacher',
             'avatar' => $this->getAvatarUrl(), // если есть метод в модели
 
             // Загруженные связи (только если есть)
             'children' => $this->whenLoaded('children', fn () => StudentResource::collection($this->children)),
             'children_count' => $this->whenCounted('children'),
+            'teacher_profile' => $this->when(
+                $this->role === 'teacher' && $this->relationLoaded('teacherProfile'),
+                fn () => [
+                    'id' => $this->teacherProfile?->id,
+                    'hourly_rate' => $this->teacherProfile?->hourly_rate,
+                    'bio' => $this->teacherProfile?->bio,
+                ]
+            ),
 
             // Скрываем email для не-админов (если нужно)
             'email_private' => $this->when($request->user()?->isAdmin(), $this->email),
@@ -44,6 +53,7 @@ class UserResource extends JsonResource
                 'total' => $total,
                 'admins' => $collection->where('role', 'admin')->count(),
                 'parents' => $collection->where('role', 'parent')->count(),
+                'teachers' => $collection->where('role', 'teacher')->count(),
                 'active' => $collection->where('is_active', true)->count(),
             ]
         ]);
