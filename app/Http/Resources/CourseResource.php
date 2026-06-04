@@ -74,7 +74,7 @@ class CourseResource extends BaseResource
                     '15-18' => 'Старшая школа',
                 ],
                 'directions' => [
-                    'pacman' => 'Игры',
+                    'pacman' => 'Графика',
                     'robot' => 'Робототехника',
                     'dron' => 'Дроны',
                     'programming' => 'Программирование',
@@ -96,7 +96,7 @@ class CourseResource extends BaseResource
             ['value' => 'robot', 'label' => 'Робототехника', 'file' => 'robot.svg'],
             ['value' => 'dron', 'label' => 'Дроны', 'file' => 'dron.svg'],
             ['value' => 'programming', 'label' => 'Программирование', 'file' => 'programming.svg'],
-            ['value' => 'pacman', 'label' => 'Игры', 'file' => 'pacman.svg'],
+            ['value' => 'pacman', 'label' => 'Графика', 'file' => 'pacman.svg'],
         ];
     }
 }

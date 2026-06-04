@@ -71,6 +71,9 @@ Route::prefix('v1')->group(function () {
             Route::apiResource('subscriptions', AdminSubscriptionController::class);
             Route::post('/subscriptions/{subscription}/extend', [AdminSubscriptionController::class, 'extend']);
 
+            // Reports
+            Route::get('/reports/financial', [\App\Http\Controllers\Api\Admin\ReportController::class, 'financial']);
+
             // Lessons with group schedule
             Route::get('/lessons', [AdminLessonController::class, 'index']);
             Route::post('/lessons', [AdminLessonController::class, 'store']);
